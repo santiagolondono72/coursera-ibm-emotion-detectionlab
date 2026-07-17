@@ -1,45 +1,34 @@
-from ibm_watson import NaturalLanguageUnderstandingV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+import requests
 import json
 
+
 def emotion_detector(text_to_analyze):
-    """
-    Función que analiza el texto y detecta las emociones usando IBM Watson NLU
-    """
-    # En el lab de Coursera se usa 'dummy_key'
-    authenticator = IAMAuthenticator('dummy_key')
-    nlu = NaturalLanguageUnderstandingV1(
-        version='2021-08-01',
-        authenticator=authenticator
-    )
-  response = nlu.analyze(
-        text=text_to_analyze,
-        features={'emotion': {}}
-    ).get_result()
+    url = 'https://sn-watson-emotion.labs.skills.network/v1/watson.runtime.nlp.v1/NlpService/EmotionPredict'
+    headers = {"grpc-metadata-mm-model-id": "emotion_aggregated-workflow_lang_en_stock"}
+    myobj = {"raw_document": {"text": text_to_analyze}}
 
-    # Extraer las emociones
-    emociones = response['emotion']['document']['emotion']
-    
-    # Encontrar la emoción dominante
-    dominant_emotion = max(emociones, key=emociones.get)
-    emociones['dominant_emotion'] = dominant_emotion
-    
-    return emociones
+    response = requests.post(url, json=myobj, headers=headers)
 
-# Ejemplo de uso
-if _name_ == "_main_":
-    texto = "I am so happy and excited today!"
-    resultado = emotion_detector(texto)
-    print(json.dumps(resultado, indent=2))
+    if response.status_code == 400:
+        return {
+            'anger': None,
+            'disgust': None,
+            'fear': None,
+            'joy': None,
+            'sadness': None,
+            'dominant_emotion': None
+        }
 
-    response = nlu.analyze(
-        text=text_to_analyze,
-        features={'emotion': {}}
-    ).get_result()
+    formatted_response = json.loads(response.text)
+    emotions = formatted_response['emotionPredictions'][0]['emotion']
 
-    # Extraer las emociones
-    emociones = response['emotion']['document']['emotion']
-    
-    # Encontrar la emoción dominante
-    dominant_emotion = max(emociones, key=emociones.get)
-    emociones['dominant_emotion'] = dominant_emotion
+    dominant_emotion = max(emotions, key=emotions.get)
+
+    return {
+        'anger': emotions['anger'],
+        'disgust': emotions['disgust'],
+        'fear': emotions['fear'],
+        'joy': emotions['joy'],
+        'sadness': emotions['sadness'],
+        'dominant_emotion': dominant_emotion
+    }
